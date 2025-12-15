@@ -1,0 +1,26 @@
+{
+    "id": "76C90442",
+    "path": "~/Rt_calculation_serial_interval/data001.R",
+    "project_path": "data001.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1760985252806.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "335,0",
+        "scrollLine": "308"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1760985398,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1760985398702,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,13 @@
+"method","model_type","transition","avg_abs_bias","avg_rmse"
+"Cori","full","exposed_to_infected",1.31104959697253,1.41970122926864
+"Wallinga-Teunis","full","exposed_to_infected",1.50036316937861,1.59119741729022
+"ABM","full","exposed_to_infected",1.46412153006178,1.61604121563963
+"Cori","full","susceptible_to_exposed",1.38995410783632,1.49897257251951
+"ABM","full","susceptible_to_exposed",1.46412153006178,1.61604121563963
+"Wallinga-Teunis","full","susceptible_to_exposed",1.58033232055826,1.66689720708332
+"Cori","partial","exposed_to_infected",2.00447611974075,2.16011563343319
+"Wallinga-Teunis","partial","exposed_to_infected",2.3730429544246,2.4172519511756
+"ABM","partial","exposed_to_infected",2.46213606592688,2.52705596958512
+"Cori","partial","susceptible_to_exposed",1.82684972131731,2.02783714404623
+"Wallinga-Teunis","partial","susceptible_to_exposed",2.45429093238296,2.47805495794981
+"ABM","partial","susceptible_to_exposed",2.46213606592688,2.52705596958512

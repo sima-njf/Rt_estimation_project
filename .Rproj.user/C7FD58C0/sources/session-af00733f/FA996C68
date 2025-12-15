@@ -1,0 +1,26 @@
+{
+    "id": "FA996C68",
+    "path": "~/Rt_calculation_serial_interval/saved_data002.R",
+    "project_path": "saved_data002.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1758306449103.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "69,0",
+        "scrollLine": "53"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1758219088,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1758219088,
+    "read_only": false,
+    "read_only_alternatives": []
+}

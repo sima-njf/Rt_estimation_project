@@ -1,0 +1,146 @@
+# File locations
+results_dir <- "~/Rt_calculation/complete_misspec_results/"
+files <- list.files(results_dir, pattern = "^misspec_results_.*\\.csv$", full.names = TRUE)
+
+# Define plot list
+plot_list <- list()
+
+# Loop over each file
+for (f in sort(files)) {
+  df <- read.csv(f)
+  
+  R0_val <- as.numeric(gsub(".*_R0_([0-9.]+)_.*", "\\1", f))
+  model_type_raw <- if (grepl("full", f)) "full" else "partial"
+  model_type_label <- ifelse(model_type_raw == "full", "Full Contact", "Partial Contact")
+  
+  # Load matching ABM data
+  abm_file <- paste0("saved_data/", model_type_raw, "_R0_", R0_val, "_n_1e+05_nsim_100_rt_ci.csv")
+  abm_plot_data <- NULL
+  if (file.exists(abm_file)) {
+    abm_data <- read.csv(abm_file)
+    abm_plot_data <- abm_data %>%
+      rename(date = source_exposure_date) %>%
+      filter(date <= 75) %>%
+      mutate(
+        mean_R = mean_rt,
+        method = "ABM (True)",
+        reporting_rate = 1.0,
+        n_sims = 1
+      ) %>%
+      select(method, date, mean_R, ci_lower, ci_upper, reporting_rate, n_sims)
+  }
+  
+  # Process estimation results
+  plot_data <- df %>%
+    filter(date <= 75) %>%
+    group_by(method, date) %>%
+    summarise(
+      mean_R = mean(median_rt, na.rm = TRUE),
+      ci_lower = quantile(median_rt, 0.025, na.rm = TRUE),
+      ci_upper = quantile(median_rt, 0.975, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Combine ABM
+  if (!is.null(abm_plot_data)) {
+    plot_data <- bind_rows(plot_data, abm_plot_data)
+  }
+  
+  plot_data$method <- factor(plot_data$method, levels = c("ABM (True)", "Cori", "Wallinga-Teunis"))
+  
+  # Individual plot
+  p <- ggplot(plot_data, aes(x = date, y = mean_R, color = method, fill = method)) +
+    geom_line(size = 1.2) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, linetype = 0) +
+    geom_hline(yintercept = R0_val, linetype = "dashed", color = "gray30", size = 1) +
+    scale_color_manual(
+      values = c("ABM (True)" = "black", "Cori" = "red", "Wallinga-Teunis" = "blue")
+    ) +
+    scale_fill_manual(
+      values = c("ABM (True)" = "black", "Cori" = "red", "Wallinga-Teunis" = "blue")
+    ) +
+    labs(
+      title = bquote(R[0] ~ "=" ~ .(R0_val)),
+      x = "Day", y = expression(R[t])
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.position = "none",
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 13),
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12),
+      axis.text = element_text(size = 11)
+    )
+  
+  plot_list[[length(plot_list) + 1]] <- p
+}
+
+# Combine using patchwork
+library(patchwork)  # Ensure it's loaded
+
+# Combine and annotate with a global title
+combined_plot <- (plot_list[[1]] | plot_list[[2]]) /
+  (plot_list[[3]] | plot_list[[4]]) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+# Add global title and caption
+combined_plot <- combined_plot + plot_annotation(
+  title = "Rt Estimation Under Case Underreporting (30%)",
+  subtitle = "Comparison of ABM (True), Cori, and Wallinga-Teunis across Different R₀ Values",
+  theme = theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5, margin = margin(b = 10))
+  )
+)
+
+# Save to file
+ggsave("combined_Rt_panel_titled.png", combined_plot, width = 14, height = 11, dpi = 300)
+cat("✅ Saved: combined_Rt_panel_titled.png\n")
+
+
+library(patchwork)
+
+# Divide the plots (assuming order is correct from earlier loop)
+full_plots <- plot_list[1:4]
+partial_plots <- plot_list[5:8]
+
+# ────────────────────────────────
+# 🟦 Full Contact Panel
+# ────────────────────────────────
+full_panel <- (full_plots[[1]] | full_plots[[2]]) /
+  (full_plots[[3]] | full_plots[[4]]) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+full_panel <- full_panel + plot_annotation(
+  title = "Rt Estimation 30% Underreporting — Full Contact Model",
+  subtitle = "Methods: ABM (True), Cori, Wallinga-Teunis",
+  theme = theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5, margin = margin(b = 10))
+  )
+)
+
+ggsave("Rt_panel_full_contact_misses.png", full_panel, width = 14, height = 11, dpi = 300)
+cat("✅ Saved: Rt_panel_full_contact.png\n")
+
+# ────────────────────────────────
+# 🟥 Partial Contact Panel
+# ────────────────────────────────
+partial_panel <- (partial_plots[[1]] | partial_plots[[2]]) /
+  (partial_plots[[3]] | partial_plots[[4]]) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+partial_panel <- partial_panel + plot_annotation(
+  title = "Rt Estimation 30% Underreporting — Partial Contact Model",
+  subtitle = "Methods: ABM (True), Cori, Wallinga-Teunis",
+  theme = theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5, margin = margin(b = 10))
+  )
+)
+
+ggsave("Rt_panel_partial_contact_misses.png", partial_panel, width = 14, height = 11, dpi = 300)
+cat("✅ Saved: Rt_panel_partial_contact.png\n")

@@ -1,0 +1,168 @@
+---
+output: 
+  pdf_document: default
+  github_document: default
+---
+
+# General parameters
+
+The following are parameters used for both ABM and Compartmental models.
+
+```{r global-params}
+set.seed(1234)
+#epi_beta=contact_rate*transmission_probability(R0*recovery/contact_rate)
+EPI_BETA  <- 3*1/7
+EPI_GAMMA <- 1/7
+EPI_LATENCY <- 4
+EPI_N     <- 10000
+EPI_0     <- 0.01
+EPI_NDAYS <- 50
+
+Sys.setenv( # nolint
+    EPI_BETA  = EPI_BETA,
+    EPI_GAMMA = EPI_GAMMA,
+    EPI_LATENCY = EPI_LATENCY,
+    EPI_N     = EPI_N,
+    EPI_0     = EPI_0,
+    EPI_NDAYS = EPI_NDAYS
+)
+```
+
+# Compartmental Models
+
+## SIR Model
+
+```{r setup}
+library(deSolve)
+library(ggplot2)
+library(data.table)
+
+```
+## SEIR Model
+
+```{r setup-seir}
+# Code adapted from
+# Chapter 2: SIR
+# Book "Epidemics: Models and Data using R"
+# By: Ottar N. Bjørnstad
+seirmod <- function(t, y, parms) {
+
+    # Pull state variables from y vector
+    S = y[1]
+    E = y[2]
+    I = y[3]
+    R = y[4]
+    
+    # Pull parameter values from parms vector
+    beta  = parms["beta"]
+    mu    = parms["mu"]
+    alpha = parms["alpha"]
+    gamma = parms["gamma"]
+    N     = parms["N"]
+    
+    # Define equations
+    dS  = mu * (N - S) - beta * S * I/N - mu * S
+    dE  = beta * S * I/N - (mu + alpha) * E
+    dI  = alpha * E - (mu + gamma) * I
+    dR  = gamma * I - mu * R
+    res = c(dS, dE, dI, dR)
+    
+    # Return list of gradients
+    list(res)
+
+}
+
+# Initial parameters
+times <- seq(0, EPI_NDAYS, by = 1)
+parms <- c(
+    mu = 0, N = EPI_N, beta = EPI_BETA,
+    alpha = 1/EPI_LATENCY, gamma = EPI_GAMMA
+    )
+start <- c(S = EPI_N * (1 - EPI_0), E = EPI_N * EPI_0, I = 0, R = 0)
+```
+
+```{r run-seir-model}
+out_seir <- ode(y = start, times = times, func = seirmod, parms = parms)
+out_seir <- as.data.frame(out_seir)
+out_seir <- rbind(
+    with(out_seir, data.table(date = time, state = "Susceptible", counts = S)),
+    with(out_seir, data.table(date = time, state = "Exposed", counts = E)),
+    with(out_seir, data.table(date = time, state = "Infected", counts = I)),
+    with(out_seir, data.table(date = time, state = "Recovered", counts = R))
+)
+```
+
+Now we visualize the model
+
+```{r visualize-seir}
+ggplot(out_seir, aes(x = date, y = counts)) +
+    geom_line(aes(colour = state)) +
+    labs(title = "Compartmental SEIR")
+```
+
+# Agent-Based Model Approach
+
+Calculation of the expected number of days in state $a$ when prob of changing
+state equals $\alpha$ is $1/\alpha$
+
+```{r a-prob}
+library(epiworldR)
+mymodel=ModelSEIRCONN(name="s",n=10000,prevalence=0.01,contact_rate = 20,transmission_rate =3*1/7*1/20 ,incubation_days=4, recovery_rate =1/7)
+seed=1234
+ndays=50
+set.seed(1234)
+  saver <- make_saver("total_hist", "transmission", "transition", "reproductive", "generation")
+  run_multiple(mymodel, ndays = ndays, nsim = 500, seed = seed, saver = saver, nthreads = 10)
+  res1 <- run_multiple_get_results(mymodel)
+  data=res1$total_hist
+plot(mymodel)
+```
+
+## Simulation study
+
+
+```{r abm-sir}
+library(ggplot2)
+epiworld <- data.table(data)
+ggplot(epiworld, aes(x = date, y = counts)) +
+    geom_line(aes(colour = state)) +
+    labs(title = "ABM SEIR")
+```
+
+
+
+
+# Comparing ABM with Compartmental Models
+
+To this end, we will compare the results of the first run of the Compartmental
+model with 100 runs of the ABM, compute the confidence interval, and see how
+likely is the compartmental model to fall within the trajectory of the ABM
+simulation.
+
+
+
+
+## SEIR
+
+```{r experiment100-seir}
+library(ggplot2)
+library(data.table)
+epiworld_seir <- data.table(data)
+epiworld_seir <- epiworld_seir[, .(
+    min  = quantile(counts, probs = .025),
+    mean = mean(counts),
+    max  = quantile(counts, probs = .975)), by = .(date, state)]
+
+# Merging Compartmental
+epiworld_seir <- merge(
+    epiworld_seir,
+    out_seir[, .(date = date, state = state, compartmental = counts)],
+    by = c("date", "state")
+)
+
+setorder(epiworld_seir, state, date)
+ggplot(epiworld_seir, aes(x = date, y = mean)) +
+    geom_ribbon(aes(ymin = min, ymax = max, colour = state), alpha = 0.1) +
+    geom_line(aes(x = date, y = compartmental, colour = sprintf("%s (compt)", state)))
+```
+

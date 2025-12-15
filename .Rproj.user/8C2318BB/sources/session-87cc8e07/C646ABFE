@@ -1,0 +1,24 @@
+{
+    "id": "C646ABFE",
+    "path": "~/Rt_calculation_serial_interval/delay_comparison_plots/summary_full_exposed_to_infected.csv",
+    "project_path": "delay_comparison_plots/summary_full_exposed_to_infected.csv",
+    "type": "text",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1762890676130.0,
+    "source_on_save": false,
+    "relative_order": 9,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1762809365,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1762809365,
+    "read_only": false,
+    "read_only_alternatives": []
+}

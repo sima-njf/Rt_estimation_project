@@ -1,0 +1,26 @@
+{
+    "id": "3C8B0CA8",
+    "path": "~/Rt_calculation_serial_interval/plot_delays.R",
+    "project_path": "plot_delays.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": true,
+    "created": 1756012202073.0,
+    "source_on_save": false,
+    "relative_order": 8,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "80,0",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1756012202,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1756013628227,
+    "read_only": false,
+    "read_only_alternatives": []
+}

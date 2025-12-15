@@ -1,0 +1,26 @@
+{
+    "id": "FC48BA00",
+    "path": "~/Rt_calculation_serial_interval/cori_wallinga_all_sims003.R",
+    "project_path": "cori_wallinga_all_sims003.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1758731808581.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "388,0",
+        "scrollLine": "5"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1758736896,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1758736896511,
+    "read_only": false,
+    "read_only_alternatives": []
+}

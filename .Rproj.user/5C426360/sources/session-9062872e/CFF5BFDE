@@ -1,0 +1,26 @@
+{
+    "id": "CFF5BFDE",
+    "path": "~/Rt_calculation_serial_interval/mimic_full_contact.R",
+    "project_path": "mimic_full_contact.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": true,
+    "created": 1759863768582.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "70,0",
+        "scrollLine": "63"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1759866661,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1759866677084,
+    "read_only": false,
+    "read_only_alternatives": []
+}

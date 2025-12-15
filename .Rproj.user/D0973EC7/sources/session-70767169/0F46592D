@@ -1,0 +1,26 @@
+{
+    "id": "0F46592D",
+    "path": "~/Rt_calculation_serial_interval/delay_analysis005.R",
+    "project_path": "delay_analysis005.R",
+    "type": "r_source",
+    "hash": "2556592952",
+    "contents": "",
+    "dirty": false,
+    "created": 1762799593057.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "894,0",
+        "scrollLine": "878"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1762799630,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1762799630563,
+    "read_only": false,
+    "read_only_alternatives": []
+}

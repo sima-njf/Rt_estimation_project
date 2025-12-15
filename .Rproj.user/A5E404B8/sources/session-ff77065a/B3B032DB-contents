@@ -1,0 +1,418 @@
+# COMPLETE R0 ANALYSIS: Process All Data + Create All Plots
+# ========================================================
+
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+library(EpiEstim)
+#source("cori_wallinga_all_sims003.R")
+# PART 1: PROCESS ALL R0 VALUES WITH CORI AND WALLINGA-TEUNIS
+# ===========================================================
+
+process_all_r0_combinations <- function() {
+  
+  cat("=== PROCESSING ALL R0 COMBINATIONS ===\n")
+  
+  # Define your parameter combinations
+ R0_values <- c(1.5, 2.0, 3.0, 5.0)
+  #R0_values <-c(2)
+  #R0_values <- 2
+  
+  model_types <- c( "full","partial")
+  #model_types<- "full"
+  transitions <- c("susceptible_to_exposed", "exposed_to_infected")
+  #transitions <-"susceptible_to_exposed"
+  # Create results directory
+  if (!dir.exists("cori_wallinga_results/")) {
+    dir.create("cori_wallinga_results/", recursive = TRUE)
+  }
+  
+  # Process each combination
+  for (model_type in model_types) {
+    for (R0_val in R0_values) {
+      
+      cat("\n--- Processing", model_type, "model with R0 =", R0_val, "---\n")
+      
+      # Load simulation data
+      file_prefix <- paste0("saved_data/", model_type, "_R0_", R0_val, "_n_1e+05_nsim_100")
+      
+      if (file.exists(paste0(file_prefix, "_metadata.rds"))) {
+        
+        cat("Loading simulation data...\n")
+        saved_data <- load_seir_data(file_prefix)
+        
+        for (transition in transitions) {
+          cat("  Processing transition:", transition, "\n")
+          
+          # Apply Cori and Wallinga-Teunis methods
+          results <- apply_both_methods_all_sims(
+            saved_data, 
+            how_infected = transition,
+            start_day = 0,
+            verbose = TRUE
+          )
+          
+          if (!is.null(results) && nrow(results) > 0) {
+            # Save results
+            result_file <- paste0("cori_wallinga_results/", model_type, "_R0_", R0_val, "_", transition, ".rds")
+            saveRDS(results, result_file)
+            
+            csv_file <- gsub(".rds", ".csv", result_file)
+            write.csv(results, csv_file, row.names = FALSE)
+            
+            cat("    ✓ Results saved to", basename(result_file), "\n")
+            cat("    ✓ Successful simulations:", length(unique(results$sim_id)), "\n")
+            
+          } else {
+            cat("    ✗ No results for this combination\n")
+          }
+        }
+      } else {
+        cat("  ✗ Data file not found:", file_prefix, "\n")
+      }
+    }
+  }
+  
+  cat("\n=== PROCESSING COMPLETE ===\n")
+}
+
+# PART 2: CREATE COMPREHENSIVE COMPARISON PLOTS
+# =============================================
+
+create_comprehensive_plots <- function() {
+  
+  cat("\n=== CREATING COMPREHENSIVE COMPARISON PLOTS ===\n")
+  
+  # Define parameters
+  R0_values <- c(1.5, 2.0, 3.0, 5.0)
+  #R0_values <-2
+  #R0_values <-  2.0
+  model_types <- c("full","partial")
+  transitions <- c("susceptible_to_exposed", "exposed_to_infected")
+  
+  # Create plots directory
+  if (!dir.exists("comparison_plots/")) {
+    dir.create("comparison_plots/", recursive = TRUE)
+  }
+  
+  # Process each model type and transition
+  for (model_type in model_types) {
+    for (transition in transitions) {
+      
+      cat("\n--- Creating plots for", model_type, "model,", transition, "---\n")
+      
+      # Initialize storage
+      plots_list <- list()
+      all_data_combined <- data.frame()
+      
+      # Load and process data for each R0
+      for (i in seq_along(R0_values)) {
+        R0_val <- R0_values[i]
+        
+        # File paths
+        cw_file <- paste0("cori_wallinga_results/", model_type, "_R0_", R0_val, "_", transition, ".rds")
+        abm_file <- paste0("saved_data/", model_type, "_R0_", R0_val, "_n_1e+05_nsim_100_rt_ci.rds")
+        
+        if (file.exists(cw_file) && file.exists(abm_file)) {
+          
+          cat("  Loading data for R0 =", R0_val, "\n")
+          
+          # Load Cori/Wallinga-Teunis results
+          cw_results <- readRDS(cw_file)
+          #cw_results$date=cw_results$date+10
+          # Load ABM results
+          abm_data <- readRDS(abm_file)
+          
+          # Prepare ABM data (limit to day 75)
+          abm_plot_data <- abm_data %>%
+            rename(date = source_exposure_date) %>%
+            filter(date>=0 & date <= 75) %>%
+            mutate(
+              mean_R = mean_rt,
+              method = "ABM",
+              R0_value = R0_val
+            ) %>%
+            select(method, date, mean_R, ci_lower, ci_upper, R0_value)
+          
+          # Prepare Cori/Wallinga-Teunis data (limit to day 75)
+          cw_plot_data <- cw_results %>%
+            filter(date>=0 & date <= 75) %>%
+            group_by(method, date) %>%
+            summarise(
+              mean_R = mean(median_rt, na.rm = TRUE),
+              ci_lower = quantile(median_rt, 0.025, na.rm = TRUE),
+              ci_upper = quantile(median_rt, 0.975, na.rm = TRUE),
+              .groups = "drop"
+            ) %>%
+            mutate(R0_value = R0_val)
+          
+          # Combine data for this R0
+          combined_data <- bind_rows(cw_plot_data, abm_plot_data)
+          all_data_combined <- bind_rows(all_data_combined, combined_data)
+          
+          # Create individual plot for this R0
+          p_individual <- ggplot(combined_data, aes(x = date, y = mean_R, color = method, fill = method)) +
+            geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, color = NA) +
+            geom_line(size = 1.2) +
+            geom_hline(yintercept = R0_val, linetype = "dashed", color = "black", size = 1) +
+            scale_color_manual(values = c("ABM" = "blue", "Cori" = "red", "Wallinga-Teunis" = "green")) +
+            scale_fill_manual(values = c("ABM" = "blue", "Cori" = "red", "Wallinga-Teunis" = "green")) +
+            scale_x_continuous(limits = c(0, 75), breaks = seq(0, 75, by = 25)) +
+            labs(
+              title = paste0("R0 = ", R0_val),
+              x = "Day",
+              y = "R_t Estimate"
+            ) +
+            theme_minimal() +
+            theme(
+              legend.position = "none",
+              plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+              axis.title = element_text(size = 12),
+              axis.text = element_text(size = 10)
+            ) +
+            annotate("text", x = 60, y = R0_val + 0.3, 
+                     label = paste0("R0 = ", R0_val), 
+                     color = "black", size = 4)
+          
+          plots_list[[i]] <- p_individual
+          
+        } else {
+          cat("  ✗ Files not found for R0 =", R0_val, "\n")
+          plots_list[[i]] <- ggplot() + 
+            annotate("text", x = 0.5, y = 0.5, 
+                     label = paste("Data not available\nfor R0 =", R0_val),
+                     size = 6) +
+            theme_void() +
+            labs(title = paste0("R0 = ", R0_val)) +
+            theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
+        }
+      }
+      
+      # Create 2x2 grid plot
+      if (length(plots_list) == 4) {
+        combined_grid <- ggarrange(
+          plots_list[[1]], plots_list[[2]], 
+          plots_list[[3]], plots_list[[4]], 
+          ncol = 2, nrow = 2,
+          common.legend = TRUE,
+          legend = "bottom"
+        )
+        
+        # Add overall title
+        final_grid <- annotate_figure(
+          combined_grid,
+          top = text_grob(
+            paste0("R_t Estimates: ABM vs Cori vs Wallinga-Teunis\n",
+                   toupper(model_type), " Model | ", 
+                   gsub("_to_", " → ", toupper(transition)), " Transition"),
+            face = "bold", size = 16
+          )
+        )
+        
+        # Save 2x2 grid
+        grid_filename <- paste0("comparison_plots/grid_", model_type, "_", transition, ".png")
+        ggsave(grid_filename, final_grid, width = 16, height = 12, dpi = 300)
+        cat("  ✓ 2x2 grid saved:", basename(grid_filename), "\n")
+      }
+      
+      # Create faceted plot
+      if (nrow(all_data_combined) > 0) {
+        
+        p_facet <- ggplot(all_data_combined, aes(x = date, y = mean_R, color = method, fill = method)) +
+          geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, color = NA) +
+          geom_line(size = 1.1) +
+          geom_hline(aes(yintercept = R0_value), linetype = "dashed", color = "black", size = 0.8) +
+          scale_color_manual(values = c("ABM" = "blue", "Cori" = "red", "Wallinga-Teunis" = "green")) +
+          scale_fill_manual(values = c("ABM" = "blue", "Cori" = "red", "Wallinga-Teunis" = "green")) +
+          scale_x_continuous(limits = c(0, 75), breaks = seq(0, 75, by = 25)) +
+          facet_wrap(~paste0("R0 = ", R0_value), ncol = 2, scales = "free_y") +
+          labs(
+            title = paste0("R_t Estimates Across R0 Values: ABM vs Cori vs Wallinga-Teunis\n",
+                           toupper(model_type), " Model | ", 
+                           gsub("_to_", " → ", toupper(transition)), " Transition"),
+            x = "Day",
+            y = "R_t Estimate",
+            color = "Method",
+            fill = "Method"
+          ) +
+          theme_minimal() +
+          theme(
+            legend.position = "bottom",
+            plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+            strip.text = element_text(size = 12, face = "bold"),
+            strip.background = element_rect(fill = "lightblue")
+          )
+        
+        # Save faceted plot
+        facet_filename <- paste0("comparison_plots/facet_", model_type, "_", transition, ".png")
+        ggsave(facet_filename, p_facet, width = 14, height = 10, dpi = 300)
+        cat("  ✓ Faceted plot saved:", basename(facet_filename), "\n")
+        
+        # Calculate and save summary statistics
+        summary_stats <- all_data_combined %>%
+          filter(date >= 10 & date <= 75) %>%
+          group_by(method, R0_value) %>%
+          summarise(
+            mean_rt_overall = mean(mean_R, na.rm = TRUE),
+            median_rt_overall = median(mean_R, na.rm = TRUE),
+            sd_rt = sd(mean_R, na.rm = TRUE),
+            bias = mean_rt_overall - R0_value,
+            abs_bias = abs(bias),
+            rmse = sqrt(mean((mean_R - R0_value)^2, na.rm = TRUE)),
+            .groups = "drop"
+          )
+        
+        summary_filename <- paste0("comparison_plots/summary_", model_type, "_", transition, ".csv")
+        write.csv(summary_stats, summary_filename, row.names = FALSE)
+        cat("  ✓ Summary stats saved:", basename(summary_filename), "\n")
+      }
+    }
+  }
+}
+
+# PART 3: CREATE OVERALL PERFORMANCE COMPARISON PLOTS
+# ===================================================
+
+create_performance_plots <- function() {
+  
+  cat("\n=== CREATING PERFORMANCE COMPARISON PLOTS ===\n")
+  
+  # Collect all summary statistics
+  summary_files <- list.files("comparison_plots/", pattern = "summary_.*\\.csv", full.names = TRUE)
+  all_summaries <- data.frame()
+  
+  for (file in summary_files) {
+    summary_data <- read.csv(file)
+    
+    # Extract model type and transition from filename
+    filename <- basename(file)
+    parts <- strsplit(gsub("summary_|\\.csv", "", filename), "_")[[1]]
+    summary_data$model_type <- parts[1]
+    summary_data$transition <- paste(parts[2:length(parts)], collapse = "_")
+    
+    all_summaries <- bind_rows(all_summaries, summary_data)
+  }
+  
+  if (nrow(all_summaries) > 0) {
+    
+    # Create bias comparison plot
+    p_bias <- ggplot(all_summaries, aes(x = factor(R0_value), y = bias, 
+                                        color = method, shape = method)) +
+      geom_point(size = 3, position = position_dodge(width = 0.3)) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+      scale_color_manual(values = c("ABM" = "blue", "Cori" = "red", "Wallinga-Teunis" = "green")) +
+      scale_shape_manual(values = c("ABM" = 16, "Cori" = 17, "Wallinga-Teunis" = 18)) +
+      facet_grid(
+        factor(transition, labels = c("exposed_to_infected" = "E → I", "susceptible_to_exposed" = "S → E")) ~ 
+          factor(model_type, labels = c("full" = "Full Contact", "partial" = "Partial Contact"))
+      ) +
+      labs(
+        title = "Bias in R_t Estimates Across R0 Values and Scenarios",
+        subtitle = "Bias = Mean R_t Estimate - True R0 (Days 10-75)",
+        x = "True R0 Value",
+        y = "Bias",
+        color = "Method",
+        shape = "Method"
+      ) +
+      theme_minimal() +
+      theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = 12),
+        strip.text = element_text(size = 11, face = "bold")
+      )
+    
+    ggsave("comparison_plots/overall_bias_comparison.png", p_bias, width = 12, height = 8, dpi = 300)
+    cat("✓ Overall bias plot saved: overall_bias_comparison.png\n")
+    
+    # Create RMSE comparison plot
+    p_rmse <- ggplot(all_summaries, aes(x = factor(R0_value), y = rmse, 
+                                        color = method, shape = method)) +
+      geom_point(size = 3, position = position_dodge(width = 0.3)) +
+      scale_color_manual(values = c("ABM" = "blue", "Cori" = "red", "Wallinga-Teunis" = "green")) +
+      scale_shape_manual(values = c("ABM" = 16, "Cori" = 17, "Wallinga-Teunis" = 18)) +
+      facet_grid(
+        factor(transition, labels = c("exposed_to_infected" = "E → I", "susceptible_to_exposed" = "S → E")) ~ 
+          factor(model_type, labels = c("full" = "Full Contact", "partial" = "Partial Contact"))
+      ) +
+      labs(
+        title = "RMSE in R_t Estimates Across R0 Values and Scenarios",
+        subtitle = "Root Mean Square Error from True R0 (Days 10-75)",
+        x = "True R0 Value",
+        y = "RMSE",
+        color = "Method",
+        shape = "Method"
+      ) +
+      theme_minimal() +
+      theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = 12),
+        strip.text = element_text(size = 11, face = "bold")
+      )
+    
+    ggsave("comparison_plots/overall_rmse_comparison.png", p_rmse, width = 12, height = 8, dpi = 300)
+    cat("✓ Overall RMSE plot saved: overall_rmse_comparison.png\n")
+    
+    # Create method ranking table
+    method_ranking <- all_summaries %>%
+      group_by(method, model_type, transition) %>%
+      summarise(
+        avg_abs_bias = mean(abs_bias, na.rm = TRUE),
+        avg_rmse = mean(rmse, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      arrange(model_type, transition, avg_rmse)
+    
+    write.csv(method_ranking, "comparison_plots/method_ranking.csv", row.names = FALSE)
+    cat("✓ Method ranking saved: method_ranking.csv\n")
+    
+    # Print summary
+    cat("\n=== PERFORMANCE SUMMARY ===\n")
+    print(method_ranking)
+  }
+}
+
+# PART 4: MAIN EXECUTION FUNCTION
+# ===============================
+
+run_complete_analysis <- function() {
+  
+  cat("╔══════════════════════════════════════════════════════════════╗\n")
+  cat("║                 COMPLETE R0 ANALYSIS                        ║\n")
+  cat("║    Processing All R0 Values + Creating All Plots           ║\n")
+  cat("╚══════════════════════════════════════════════════════════════╝\n")
+  
+  # Step 1: Process all R0 combinations
+  process_all_r0_combinations()
+  
+  # Step 2: Create comprehensive plots
+  create_comprehensive_plots()
+  
+  # Step 3: Create performance plots
+  create_performance_plots()
+  
+  cat("\n")
+  cat("╔══════════════════════════════════════════════════════════════╗\n")
+  cat("║                     ANALYSIS COMPLETE!                      ║\n")
+  cat("╚══════════════════════════════════════════════════════════════╝\n")
+  
+  cat("\nFiles created:\n")
+  cat("📁 cori_wallinga_results/ - All Cori/Wallinga-Teunis results\n")
+  cat("📁 comparison_plots/ - All comparison plots and summaries\n")
+  
+  cat("\nKey files:\n")
+  plot_files <- list.files("comparison_plots/", full.names = FALSE)
+  for (file in plot_files) {
+    if (grepl("\\.(png|csv)$", file)) {
+      icon <- if (grepl("\\.png$", file)) "🖼️" else "📊"
+      cat(paste0(icon, " ", file, "\n"))
+    }
+  }
+}
+
+# PART 5: QUICK START OPTION
+# ==========================
+
+# Uncomment and run this to execute everything:
+ run_complete_analysis()

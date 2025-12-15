@@ -1,0 +1,442 @@
+# ================================================================================
+# SIMPLE & ROBUST 2×2 INTERACTIVE GRID
+# Creates reliable 2x2 grid with all R0 values
+# ================================================================================
+
+suppressPackageStartupMessages({
+  library(plotly)
+  library(dplyr)
+  library(readr)
+  library(htmlwidgets)
+})
+
+# ── CONFIG ──────────────────────────────────────────────────────────────────────
+PLOTS_DIR       <- "interactive_grid_plots"
+DATE_MIN        <- 0
+DATE_MAX        <- 75
+
+R0_VALUES       <- c(1.5, 2.0, 3.0, 5.0)
+MODEL_TYPES     <- c("full", "partial")
+TRANSITIONS     <- c("susceptible_to_exposed", "exposed_to_infected")
+
+# Data directories
+BASELINE_DIR    <- "cori_wallinga_results"
+DELAY_DIR       <- "complete_delay_results"
+MISSPEC_DIR     <- "complete_misspec_results"
+ABM_DIR         <- "saved_data"
+
+# Colors
+COLORS <- list(
+  ABM = "#000000",
+  Cori_baseline = "#D62728",
+  Cori_delay = "#FF7F0E",
+  Cori_misspec = "#8C564B",
+  WT_baseline = "#1F77B4",
+  WT_delay = "#2CA02C",
+  WT_misspec = "#9467BD"
+)
+
+# ── SAFE LOAD FUNCTIONS ─────────────────────────────────────────────────────────
+
+safe_load_baseline <- function(model_type, R0_val, transition) {
+  tryCatch({
+    file_name <- paste0(model_type, "_R0_", R0_val, "_", transition, ".csv")
+    file_path <- file.path(BASELINE_DIR, file_name)
+    if (!file.exists(file_path)) return(NULL)
+    read_csv(file_path, show_col_types = FALSE) %>%
+      mutate(scenario = "Baseline", R0 = R0_val)
+  }, error = function(e) {
+    cat("  Warning: Could not load baseline for R0 =", R0_val, "\n")
+    return(NULL)
+  })
+}
+
+safe_load_delay <- function(model_type, R0_val, transition) {
+  tryCatch({
+    file_name <- paste0("delay_results_", model_type, "_R0_", R0_val, "_", transition, ".csv")
+    file_path <- file.path(DELAY_DIR, file_name)
+    if (!file.exists(file_path)) return(NULL)
+    read_csv(file_path, show_col_types = FALSE) %>%
+      filter(delay_scenario == "high_delay") %>%
+      mutate(scenario = "Delay", R0 = R0_val)
+  }, error = function(e) {
+    cat("  Warning: Could not load delay for R0 =", R0_val, "\n")
+    return(NULL)
+  })
+}
+
+safe_load_misspec <- function(model_type, R0_val, transition) {
+  tryCatch({
+    file_name <- paste0("misspec_results_", model_type, "_R0_", R0_val, "_", transition, ".csv")
+    file_path <- file.path(MISSPEC_DIR, file_name)
+    if (!file.exists(file_path)) return(NULL)
+    read_csv(file_path, show_col_types = FALSE) %>%
+      mutate(scenario = "Misspec", R0 = R0_val)
+  }, error = function(e) {
+    cat("  Warning: Could not load misspec for R0 =", R0_val, "\n")
+    return(NULL)
+  })
+}
+
+safe_load_abm <- function(model_type, R0_val) {
+  tryCatch({
+    file_name <- paste0(model_type, "_R0_", R0_val, "_n_1e+05_nsim_100_rt_ci.rds")
+    file_path <- file.path(ABM_DIR, file_name)
+    if (!file.exists(file_path)) {
+      csv_path <- gsub("\\.rds$", ".csv", file_path)
+      if (file.exists(csv_path)) {
+        return(read_csv(csv_path, show_col_types = FALSE) %>% mutate(R0 = R0_val))
+      }
+      return(NULL)
+    }
+    readRDS(file_path) %>% mutate(R0 = R0_val)
+  }, error = function(e) {
+    cat("  Warning: Could not load ABM for R0 =", R0_val, "\n")
+    return(NULL)
+  })
+}
+
+# ── PREPARE DATA ────────────────────────────────────────────────────────────────
+
+prepare_single_panel_data <- function(model_type, R0_val, transition) {
+  
+  cat("    Loading R0 =", R0_val, "... ")
+  
+  baseline <- safe_load_baseline(model_type, R0_val, transition)
+  delay <- safe_load_delay(model_type, R0_val, transition)
+  misspec <- safe_load_misspec(model_type, R0_val, transition)
+  abm <- safe_load_abm(model_type, R0_val)
+  
+  cw_data <- bind_rows(baseline, delay, misspec)
+  
+  if (is.null(cw_data) || nrow(cw_data) == 0) {
+    cat("No data\n")
+    return(NULL)
+  }
+  
+  cw_summary <- cw_data %>%
+    filter(date >= DATE_MIN, date <= DATE_MAX) %>%
+    group_by(method, date, scenario) %>%
+    summarise(
+      mean_rt = mean(median_rt, na.rm = TRUE),
+      ci_lower = quantile(median_rt, 0.025, na.rm = TRUE),
+      ci_upper = quantile(median_rt, 0.975, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  abm_summary <- NULL
+  if (!is.null(abm)) {
+    abm_summary <- abm %>%
+      rename(date = source_exposure_date) %>%
+      filter(date >= DATE_MIN, date <= DATE_MAX) %>%
+      transmute(method = "ABM", date, mean_rt, ci_lower, ci_upper, scenario = "ABM")
+  }
+  
+  cat("OK\n")
+  list(cw = cw_summary, abm = abm_summary, R0 = R0_val)
+}
+
+# ── CREATE SINGLE PANEL PLOT ────────────────────────────────────────────────────
+
+create_single_panel_plotly <- function(data, R0_val) {
+  
+  if (is.null(data)) {
+    p <- plot_ly() %>%
+      add_annotations(
+        x = 0.5, y = 0.5,
+        text = paste0("No data for R0 = ", R0_val),
+        showarrow = FALSE,
+        font = list(size = 16)
+      ) %>%
+      layout(
+        xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+        yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
+      )
+    return(p)
+  }
+  
+  p <- plot_ly()
+  
+  # Helper functions
+  get_color <- function(method, scenario) {
+    if (method == "ABM") return(COLORS$ABM)
+    if (method == "Cori") {
+      if (scenario == "Baseline") return(COLORS$Cori_baseline)
+      if (scenario == "Delay") return(COLORS$Cori_delay)
+      if (scenario == "Misspec") return(COLORS$Cori_misspec)
+    }
+    if (method == "Wallinga-Teunis") {
+      if (scenario == "Baseline") return(COLORS$WT_baseline)
+      if (scenario == "Delay") return(COLORS$WT_delay)
+      if (scenario == "Misspec") return(COLORS$WT_misspec)
+    }
+    return("gray")
+  }
+  
+  get_dash <- function(scenario) {
+    if (scenario %in% c("Baseline", "ABM")) return("solid")
+    if (scenario == "Delay") return("dash")
+    if (scenario == "Misspec") return("dot")
+    return("solid")
+  }
+  
+  # Add ABM
+  if (!is.null(data$abm)) {
+    abm_df <- data$abm
+    
+    p <- p %>%
+      add_ribbons(
+        data = abm_df,
+        x = ~date, ymin = ~ci_lower, ymax = ~ci_upper,
+        fillcolor = "rgba(0,0,0,0.2)",
+        line = list(width = 0),
+        showlegend = FALSE,
+        legendgroup = "ABM",
+        hoverinfo = "skip"
+      ) %>%
+      add_lines(
+        data = abm_df,
+        x = ~date, y = ~mean_rt,
+        line = list(color = COLORS$ABM, width = 3),
+        name = "ABM",
+        legendgroup = "ABM",
+        hovertemplate = "<b>ABM</b><br>Day: %{x}<br>Rt: %{y:.3f}<extra></extra>"
+      )
+  }
+  
+  # Add Cori/Wallinga
+  for (scen in c("Baseline", "Delay", "Misspec")) {
+    scen_data <- data$cw %>% filter(scenario == scen)
+    if (nrow(scen_data) == 0) next
+    
+    for (meth in unique(scen_data$method)) {
+      meth_data <- scen_data %>% filter(method == meth)
+      
+      color <- get_color(meth, scen)
+      dash <- get_dash(scen)
+      
+      label <- case_when(
+        scen == "Baseline" ~ paste0(meth, ": Baseline"),
+        scen == "Delay" ~ paste0(meth, ": 50% Delay"),
+        scen == "Misspec" ~ paste0(meth, ": 70% Report")
+      )
+      
+      p <- p %>%
+        add_ribbons(
+          data = meth_data,
+          x = ~date, ymin = ~ci_lower, ymax = ~ci_upper,
+          fillcolor = paste0("rgba(", paste(col2rgb(color), collapse = ","), ",0.25)"),
+          line = list(width = 0),
+          showlegend = FALSE,
+          legendgroup = scen,
+          hoverinfo = "skip"
+        ) %>%
+        add_lines(
+          data = meth_data,
+          x = ~date, y = ~mean_rt,
+          line = list(color = color, width = 2.5, dash = dash),
+          name = label,
+          legendgroup = scen,
+          hovertemplate = paste0("<b>", label, "</b><br>Day: %{x}<br>Rt: %{y:.3f}<extra></extra>")
+        )
+    }
+  }
+  
+  # Reference line
+  p <- p %>%
+    add_lines(
+      x = c(0, 75), y = c(R0_val, R0_val),
+      line = list(color = "gray", width = 1.5, dash = "dash"),
+      showlegend = FALSE,
+      hoverinfo = "skip"
+    )
+  
+  # Layout
+  p <- p %>%
+    layout(
+      xaxis = list(title = "Day", gridcolor = "#f0f0f0", range = c(0, 75)),
+      yaxis = list(title = "Rt", gridcolor = "#f0f0f0"),
+      plot_bgcolor = "white",
+      hovermode = "closest",
+      annotations = list(
+        list(
+          x = 0.5, y = 1.05,
+          text = paste0("<b>R<sub>0</sub> = ", R0_val, "</b>"),
+          xref = "paper", yref = "paper",
+          showarrow = FALSE,
+          font = list(size = 16)
+        )
+      )
+    )
+  
+  p
+}
+
+# ── CREATE 2×2 GRID ─────────────────────────────────────────────────────────────
+
+create_2x2_grid <- function(model_type, transition) {
+  
+  cat("\n📊 Creating 2×2 grid for:", model_type, "-", transition, "\n")
+  
+  # Load all panel data
+  panel_data <- list()
+  for (R0_val in R0_VALUES) {
+    panel_data[[as.character(R0_val)]] <- prepare_single_panel_data(model_type, R0_val, transition)
+  }
+  
+  # Create individual plots
+  cat("  Creating subplots...\n")
+  plots <- list()
+  for (R0_val in R0_VALUES) {
+    plots[[as.character(R0_val)]] <- create_single_panel_plotly(
+      panel_data[[as.character(R0_val)]], 
+      R0_val
+    )
+  }
+  
+  # Combine into 2×2
+  cat("  Combining into 2×2 grid...\n")
+  fig <- subplot(
+    plots[["1.5"]], plots[["2"]],
+    plots[["3"]], plots[["5"]],
+    nrows = 2,
+    shareX = FALSE,
+    shareY = FALSE,
+    titleX = TRUE,
+    titleY = TRUE
+  )
+  
+  # Global layout
+  trans_label <- gsub("susceptible_to_exposed", "S → E", transition)
+  trans_label <- gsub("exposed_to_infected", "E → I", trans_label)
+  
+  fig <- fig %>%
+    layout(
+      title = list(
+        text = paste0(
+          "<b>Rt Estimation: ", toupper(model_type), " Model | ", trans_label, "</b><br>",
+          "<sub>Click legend groups to show/hide across all panels</sub>"
+        ),
+        font = list(size = 18)
+      ),
+      showlegend = TRUE,
+      legend = list(
+        orientation = "v",
+        x = 1.02,
+        y = 0.5,
+        bgcolor = "rgba(255,255,255,0.9)",
+        bordercolor = "gray",
+        borderwidth = 1
+      ),
+      margin = list(t = 100, r = 200)
+    ) %>%
+    config(
+      displayModeBar = TRUE,
+      displaylogo = FALSE
+    )
+  
+  fig
+}
+
+# ── MAIN FUNCTION ───────────────────────────────────────────────────────────────
+
+create_all_grids <- function() {
+  cat("╔══════════════════════════════════════════════════════════════╗\n")
+  cat("║           CREATING 2×2 GRID INTERACTIVE PLOTS              ║\n")
+  cat("╚══════════════════════════════════════════════════════════════╝\n")
+  
+  # Create output directory
+  if (!dir.exists(PLOTS_DIR)) {
+    dir.create(PLOTS_DIR, recursive = TRUE)
+    cat("✅ Created directory:", PLOTS_DIR, "\n")
+  }
+  
+  # Create each plot
+  for (model_type in MODEL_TYPES) {
+    for (transition in TRANSITIONS) {
+      
+      cat("\n" , rep("=", 60), "\n", sep = "")
+      
+      tryCatch({
+        fig <- create_2x2_grid(model_type, transition)
+        
+        filename <- file.path(
+          PLOTS_DIR,
+          paste0("grid_2x2_", model_type, "_", transition, ".html")
+        )
+        
+        cat("  Saving file...\n")
+        saveWidget(fig, filename, selfcontained = TRUE)
+        cat("✅ SAVED:", filename, "\n")
+        
+      }, error = function(e) {
+        cat("❌ ERROR for", model_type, transition, ":\n")
+        cat("   ", e$message, "\n")
+      })
+    }
+  }
+  
+  # Create index
+  cat("\n📄 Creating index page...\n")
+  create_simple_index()
+  
+  cat("\n╔══════════════════════════════════════════════════════════════╗\n")
+  cat("║                      COMPLETE!                              ║\n")
+  cat("╚══════════════════════════════════════════════════════════════╝\n")
+  cat("\n📁 Files in:", PLOTS_DIR, "/\n")
+  list.files(PLOTS_DIR, pattern = "\\.html$", full.names = FALSE)
+}
+
+# ── SIMPLE INDEX ────────────────────────────────────────────────────────────────
+
+create_simple_index <- function() {
+  html <- '<!DOCTYPE html>
+<html>
+<head>
+    <title>Interactive 2×2 Grids</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 40px auto; padding: 20px; }
+        h1 { color: #333; }
+        .plot-link { 
+            display: block; 
+            padding: 15px; 
+            margin: 10px 0; 
+            background: #4CAF50; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            text-align: center;
+        }
+        .plot-link:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+    <h1>🔬 Interactive 2×2 Grid Plots</h1>
+    <p>Click any link below to view the interactive plot:</p>
+'
+  
+  files <- list.files(PLOTS_DIR, pattern = "^grid_2x2.*\\.html$", full.names = FALSE)
+  
+  for (file in files) {
+    label <- gsub("grid_2x2_", "", file)
+    label <- gsub("_", " ", label)
+    label <- gsub(".html", "", label)
+    label <- toupper(label)
+    
+    html <- paste0(html, '
+    <a href="', file, '" class="plot-link">', label, '</a>
+')
+  }
+  
+  html <- paste0(html, '
+</body>
+</html>')
+  
+  writeLines(html, file.path(PLOTS_DIR, "index.html"))
+  cat("✅ Created index.html\n")
+}
+
+# ── RUN ─────────────────────────────────────────────────────────────────────────
+if (sys.nframe() == 0) {
+  create_all_grids()
+}

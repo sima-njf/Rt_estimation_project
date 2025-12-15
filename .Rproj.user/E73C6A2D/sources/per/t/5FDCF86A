@@ -1,0 +1,26 @@
+{
+    "id": "5FDCF86A",
+    "path": "~/Rt_calculation_serial_interval/data001.R",
+    "project_path": "data001.R",
+    "type": "r_source",
+    "hash": "3250409274",
+    "contents": "",
+    "dirty": false,
+    "created": 1763577969346.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "135,38",
+        "scrollLine": "205"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1763578314,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1763578314175,
+    "read_only": false,
+    "read_only_alternatives": []
+}

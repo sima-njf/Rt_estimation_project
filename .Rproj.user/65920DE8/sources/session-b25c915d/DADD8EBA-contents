@@ -1,0 +1,125 @@
+# Load libraries
+library(epiworldR)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(data.table)
+library(igraph)
+
+# --- Shared Parameters ---
+R0 <- 2
+name <- "Covid"
+n <- 1e5
+prevalence <- 100 / n
+contact_rate <- 20.0
+recovery_rate <- 1.0 / 7.0
+incubation_days <- 4
+ndays <- 150
+nsim <- 100
+seed <- 1234
+transmission_rate <- R0 * recovery_rate / contact_rate
+
+# Create saver
+saver <- make_saver("total_hist", "transmission", "transition", "reproductive", "generation")
+
+# --------------------------------------------------
+# 1. Fully Connected Network Model (SEIRCONN)
+# --------------------------------------------------
+
+set.seed(seed)
+cat("Running fully connected model...\n")
+
+model_conn <- ModelSEIRCONN(
+  name = name,
+  n = n,
+  prevalence = prevalence,
+  contact_rate = contact_rate,
+  transmission_rate = transmission_rate,
+  recovery_rate = recovery_rate,
+  incubation_days = incubation_days
+)
+
+run_multiple(model_conn, ndays = ndays, nsim = nsim, seed = seed, saver = saver, nthreads = 18)
+results_conn <- run_multiple_get_results(model_conn, nthreads = 18)
+
+# Reproductive number for fully connected
+reproductive_conn <- results_conn$reproductive %>% filter(source >= 0)
+ci_rt_conn <- reproductive_conn %>%
+  group_by(sim_num, source_exposure_date) %>%
+  summarise(rt = mean(rt), .groups = "drop") %>%
+  group_by(source_exposure_date) %>%
+  summarise(
+    mean_rt = mean(rt),
+    ci_lower = quantile(rt, 0.025),
+    ci_upper = quantile(rt, 0.975),
+    .groups = "drop"
+  ) %>%
+  mutate(model = "Fully Connected")
+
+# --------------------------------------------------
+# 2. Erdős–Rényi Network Model (SEIR + Edgelist)
+# --------------------------------------------------
+
+set.seed(seed)
+deg <- 10
+
+# Generate Erdős–Rényi graph using igraph
+p_er <- deg / (n - 1)
+g <- erdos.renyi.game(n = n, p.or.m = p_er, type = "gnp", directed = FALSE)
+net2 <- as_edgelist(g, names = FALSE)
+net2 <- apply(net2, 2, as.integer) - 1L  # convert to integer and 0-indexed
+
+# Create model from edgelist
+model_er <- ModelSEIR(
+  name = paste(name, "ER"),
+  prevalence = prevalence,
+  transmission_rate = transmission_rate,
+  incubation_days = incubation_days,
+  recovery_rate = recovery_rate
+)
+
+agents_from_edgelist(
+  model = model_er,
+  source = net2[, 1],
+  target = net2[, 2],
+  size = as.integer(n),
+  directed = FALSE
+)
+
+cat("Running Erdős–Rényi model...\n")
+run_multiple(model_er, ndays = ndays, nsim = nsim, seed = seed, saver = saver, nthreads = 18)
+results_er <- run_multiple_get_results(model_er, nthreads = 18)
+
+# Reproductive number for ER
+reproductive_er <- results_er$reproductive %>% filter(source >= 0)
+ci_rt_er <- reproductive_er %>%
+  group_by(sim_num, source_exposure_date) %>%
+  summarise(rt = mean(rt), .groups = "drop") %>%
+  group_by(source_exposure_date) %>%
+  summarise(
+    mean_rt = mean(rt),
+    ci_lower = quantile(rt, 0.025),
+    ci_upper = quantile(rt, 0.975),
+    .groups = "drop"
+  ) %>%
+  mutate(model = "Erdős–Rényi")
+
+# --------------------------------------------------
+# 3. Plotting Both Together
+# --------------------------------------------------
+
+rt_combined <- bind_rows(ci_rt_conn, ci_rt_er)
+
+ggplot(rt_combined, aes(x = source_exposure_date, y = mean_rt, color = model, fill = model)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.2, color = NA) +
+  labs(
+    title = "Estimated Reproductive Number (Rt) Over Time",
+    subtitle = "Comparison between Fully Connected vs Erdős–Rényi Network",
+    x = "Days since start",
+    y = "Rt"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "top") +
+  scale_color_manual(values = c("Fully Connected" = "blue", "Erdős–Rényi" = "darkgreen")) +
+  scale_fill_manual(values = c("Fully Connected" = "blue", "Erdős–Rényi" = "darkgreen"))

@@ -1,0 +1,71 @@
+
+# HOW TO USE data.R - Step-by-Step Guide
+# =====================================
+
+# STEP 1: Source the data.R file
+source("data001.R")
+
+# STEP 2: Set your parameters (same as in your original code)
+n <- 1e5                    # Population size
+prevalence <- 100/n         # Initial infected fraction  
+contact_rate <- 20.0        # Contact rate
+recovery_rate <- 1.0/7.0    # Recovery rate
+incubation_days <- 4        # Incubation period
+ndays <- 150               # Number of simulation days
+nsim <- 100               # Number of simulations
+seed <- 1234               # Random seed
+
+# STEP 3A: Save data for FULL contact model (your original SEIRCONN)
+# This replaces your generate_cori_comparison_plot_full function's simulation part
+
+# Save for different R0 values
+R0_values <- c(1.5, 2.0, 3.0, 5.0)
+for (R0_val in R0_values) {
+  cat("Saving full contact data for R0 =", R0_val, "\n")
+  
+  save_seir_simulation_data(
+    model_type = "full",        # This uses ModelSEIRCONN
+    name = "Covid",
+    n = n,
+    prevalence = prevalence,
+    contact_rate = contact_rate,
+    R0 = R0_val,
+    recovery_rate = recovery_rate,
+    incubation_days = incubation_days,
+    ndays = ndays,
+    nsim = nsim,
+    seed = seed,
+    save_dir = "saved_data/"    # Creates this folder automatically
+  )
+}
+
+# STEP 3B: Save data for PARTIAL contact model (your SEIR with small-world network)
+# This replaces your generate_cori_comparison_plot_partial function's simulation part
+
+for (R0_val in R0_values) {
+  cat("Saving partial contact data for R0 =", R0_val, "\n")
+  
+  save_seir_simulation_data(
+    model_type = "partial",     # This uses ModelSEIR + agents_smallworld
+    name = "Covid",
+    n = n,
+    prevalence = prevalence,
+    contact_rate = 20,
+    R0 = R0_val,
+    recovery_rate = recovery_rate,
+    incubation_days = incubation_days,
+    ndays = ndays,
+    nsim = nsim,
+    seed = seed,
+    save_dir = "saved_data/"
+  )
+}
+
+# STEP 4: Load and use the saved data for analysis
+# ================================================
+
+# Example: Load data for full contact, R0 = 2.0
+data_full_R0_2 <- load_seir_data("~/Documents/saved_data/full_R0_2_n_1e+05_nsim_100")
+
+# Example: Load data for partial contact, R0 = 1.5  
+data_partial_R0_2 <- load_seir_data("saved_data/partial_R0_2_n_1e+05_nsim_100")
