@@ -161,6 +161,64 @@
         </div>
         
         <div class="info-section">
+            <h2>Simulation Parameters</h2>
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>📊 Population</h3>
+                    <p><strong>Size:</strong> 100,000<br>
+                       <strong>Initial infected:</strong> 100 (0.1%)<br>
+                       <strong>Simulations:</strong> 100 per scenario</p>
+                </div>
+                <div class="info-card">
+                    <h3>🦠 Disease Model</h3>
+                    <p><strong>Model:</strong> SEIR (Susceptible-Exposed-Infected-Recovered)<br>
+                       <strong>Incubation:</strong> 4 days<br>
+                       <strong>Recovery:</strong> 7 days (rate = 1/7)</p>
+                </div>
+                <div class="info-card">
+                    <h3>🔗 Contact Structure</h3>
+                    <p><strong>Full Model:</strong> Contact rate = 20<br>
+                       <strong>Partial Model:</strong> Erdős-Rényi network, avg degree = 10<br>
+                       <strong>Days simulated:</strong> 150</p>
+                </div>
+                <div class="info-card">
+                    <h3>📈 R₀ Values Tested</h3>
+                    <p><strong>Basic reproduction numbers:</strong><br>
+                       R₀ = 1.5, 2.0, 3.0, 5.0<br>
+                       <strong>Transmission rate:</strong> Calculated as R₀ × recovery_rate / contact_rate</p>
+                </div>
+                <div class="info-card">
+                    <h3>⏱️ Serial Intervals</h3>
+                    <p><strong>Method:</strong> Calculated from transmission data<br>
+                       <strong>Definition:</strong> Time between symptom onset of infector and infectee<br>
+                       <strong>Used in:</strong> Both Cori and Wallinga-Teunis methods</p>
+                </div>
+                <div class="info-card">
+                    <h3>📉 Transitions Tracked</h3>
+                    <p><strong>S → E:</strong> Susceptible to Exposed<br>
+                       <strong>E → I:</strong> Exposed to Infected<br>
+                       Both transitions analyzed separately for R<sub>t</sub> estimation</p>
+                </div>
+                <div class="info-card">
+                    <h3>🎯 Real Data Scenario</h3>
+                    <p><strong>Perfect reporting:</strong> 100% of cases reported<br>
+                       <strong>No delays:</strong> Instantaneous reporting<br>
+                       <strong>Baseline:</strong> Used to validate estimation methods</p>
+                </div>
+                <div class="info-card">
+                    <h3>⏳ Delayed Scenarios</h3>
+                    <p><strong>50% Delayed:</strong> Half of cases delayed by Uniform(1,7) days<br>
+                       <strong>Purpose:</strong> Test robustness to reporting delays</p>
+                </div>
+                <div class="info-card">
+                    <h3>📊 70% Reporting</h3>
+                    <p><strong>Underreporting:</strong> Only 70% of cases reported (binomial thinning)<br>
+                       <strong>Purpose:</strong> Test impact of incomplete surveillance</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-section">
             <h2>How to Use</h2>
             <div class="info-grid">
                 <div class="info-card">
