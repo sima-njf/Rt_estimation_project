@@ -5,9 +5,9 @@
 "Cori","full","susceptible_to_exposed",1.38995410783632,1.49897257251951
 "ABM","full","susceptible_to_exposed",1.46412153006178,1.61604121563963
 "Wallinga-Teunis","full","susceptible_to_exposed",1.58033232055826,1.66689720708332
-"Cori","partial","exposed_to_infected",2.00447611974075,2.16011563343319
-"Wallinga-Teunis","partial","exposed_to_infected",2.3730429544246,2.4172519511756
-"ABM","partial","exposed_to_infected",2.46213606592688,2.52705596958512
-"Cori","partial","susceptible_to_exposed",1.82684972131731,2.02783714404623
-"Wallinga-Teunis","partial","susceptible_to_exposed",2.45429093238296,2.47805495794981
-"ABM","partial","susceptible_to_exposed",2.46213606592688,2.52705596958512
+"Cori","partial","exposed_to_infected",1.91899595677124,2.11143082994921
+"Wallinga-Teunis","partial","exposed_to_infected",2.08950401019319,2.21934865231834
+"ABM","partial","exposed_to_infected",2.23211279301783,2.40721708397006
+"Cori","partial","susceptible_to_exposed",1.97134477373908,2.14822928108163
+"Wallinga-Teunis","partial","susceptible_to_exposed",2.18939682190318,2.29708517351886
+"ABM","partial","susceptible_to_exposed",2.23211279301783,2.40721708397006

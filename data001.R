@@ -61,7 +61,7 @@ save_seir_simulation_data <- function(
     g <- erdos.renyi.game(n = n, p.or.m = p_er, type = "gnp", directed = FALSE)
     net2 <- as_edgelist(g, names = FALSE)
     net2 <- apply(net2, 2, as.integer) - 1L  # convert to integer and 0-indexed
-    transmission_rate <- R0 * recovery_rate / deg*2
+    transmission_rate <- R0 * recovery_rate / deg
     # Create model from edgelist
     model <- ModelSEIR(
       name = paste(name, "ER"),
@@ -292,7 +292,7 @@ if (FALSE) {  # Set to TRUE to run
       ndays = ndays,
       nsim = nsim,
       seed = seed,
-      deg = 10  # Average degree for ER network
+      deg = 20  # Average degree for ER network
     )
   }
   
