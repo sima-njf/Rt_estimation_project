@@ -18,7 +18,7 @@ process_all_r0_combinations <- function() {
   #R0_values <-c(2)
   #R0_values <- 2
   
-  model_types <- c("partial")
+  model_types <- c("partial","full")
   #model_types<- "full"
   transitions <- c("susceptible_to_exposed", "exposed_to_infected")
   #transitions <-"susceptible_to_exposed"

@@ -26,7 +26,7 @@ save_seir_simulation_data <- function(
     recovery_rate = 1.0/7.0,
     incubation_days = 4,
     ndays = 150,
-    nsim = 100,
+    nsim = 1000,
     seed = 1234,
     save_dir = "saved_data/",
     deg = 20  # Average degree for ER network
@@ -98,10 +98,9 @@ save_seir_simulation_data <- function(
   
   # Run simulation
   cat("Running", nsim, "simulations for", ndays, "days with R0 =", R0, "...\n")
-  run_multiple(model, ndays = ndays, nsim = nsim, seed = seed, saver = saver, nthreads = 18)
-  
-  # Get results
-  results <- run_multiple_get_results(model, nthreads = 18)
+  nthreads <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = "1"))
+  run_multiple(model, ndays = ndays, nsim = nsim, seed = seed, saver = saver, nthreads = nthreads)
+  results <- run_multiple_get_results(model, nthreads = nthreads)
   
   # Prepare transition data (the main dataframe for Cori/Wallinga-Teunis)
   df_transitions <- results$transition %>%
@@ -257,7 +256,7 @@ if (FALSE) {  # Set to TRUE to run
   recovery_rate <- 1.0/7.0
   incubation_days <- 4
   ndays <- 150
-  nsim <- 100
+  nsim <- 1000
   seed <- 1234
   
   # R0 values to test

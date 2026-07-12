@@ -12,7 +12,7 @@ contact_rate <- 20.0        # Contact rate
 recovery_rate <- 1.0/7.0    # Recovery rate
 incubation_days <- 4        # Incubation period
 ndays <- 150               # Number of simulation days
-nsim <- 100               # Number of simulations
+nsim <- 1000               # Number of simulations
 seed <- 1234               # Random seed
 
 # STEP 3A: Save data for FULL contact model (your original SEIRCONN)
@@ -65,7 +65,7 @@ for (R0_val in R0_values) {
 # ================================================
 
 # Example: Load data for full contact, R0 = 2.0
-data_full_R0_2 <- load_seir_data("~/Documents/saved_data/full_R0_2_n_1e+05_nsim_100")
+data_full_R0_2 <- load_seir_data("~/Documents/saved_data/full_R0_2_n_1e+05_nsim_1000")
 
 # Example: Load data for partial contact, R0 = 1.5  
-data_partial_R0_2 <- load_seir_data("saved_data/partial_R0_2_n_1e+05_nsim_100")
+data_partial_R0_2 <- load_seir_data("saved_data/partial_R0_2_n_1e+05_nsim_1000")
