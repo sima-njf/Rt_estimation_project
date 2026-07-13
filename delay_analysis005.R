@@ -406,8 +406,7 @@ run_complete_delay_analysis <- function(R0_values = c(1.5, 2.0, 3.0, 5.0),
         cat("Processing:", combination_name, "\n")
         cat(rep("=", 70), "\n")
         
-        file_prefix <- paste0("saved_data/", model_type, "_R0_", R0_val, "_n_1e+05_nsim_100")
-        
+        file_prefix <- paste0("saved_data/", model_type, "_R0_", R0_val, "_n_1e+05_nsim_1000")        
         if (!file.exists(paste0(file_prefix, "_metadata.rds"))) {
           cat("⚠️  Simulation data not found:", file_prefix, "\n")
           processing_summary <- bind_rows(processing_summary, data.frame(
@@ -695,8 +694,7 @@ create_comprehensive_plots_from_delay_results <- function(
         R0_val <- R0_values[i]
         combo   <- paste0(model_type, "_R0_", R0_val, "_", transition)
         delay_file <- file.path(results_dir, paste0("delay_results_", combo, ".rds"))
-        abm_file   <- file.path("saved_data", paste0(model_type, "_R0_", R0_val, "_n_1e+05_nsim_100_rt_ci.rds"))
-        
+        abm_file <- file.path("saved_data", paste0(model_type, "_R0_", R0_val, "_n_1e+05_nsim_1000_rt_ci.rds"))        
         if (file.exists(delay_file)) {
           cat("  • Loading delay results for R0 =", R0_val, "\n")
           delay_results <- readRDS(delay_file)
@@ -875,21 +873,21 @@ create_comprehensive_plots_from_delay_results <- function(
 
 # ── QUICK START (uncomment to run) ───────────────────────────────────────────────
 # 1) Run the full SI-based reporting-delays analysis and save results/plots:
-run_complete_delay_analysis(
-  R0_values = c(1.5, 2.0, 3.0, 5.0),
-  model_types = c("full", "partial"),
-  transitions = c("susceptible_to_exposed","exposed_to_infected"),
-  delay_scenarios = list("medium_delay" = 0.3, "high_delay" = 0.5),
-  max_sims_per_scenario = 60,
-  start_day = 0
-)
+# run_complete_delay_analysis(
+#   R0_values = c(1.5, 2.0, 3.0, 5.0),
+#   model_types = c("full", "partial"),
+#   transitions = c("susceptible_to_exposed","exposed_to_infected"),
+#   delay_scenarios = list("medium_delay" = 0.3, "high_delay" = 0.5),
+#   max_sims_per_scenario = 60,
+#   start_day = 0
+# )
 
 # 2) Build the comprehensive multi-R0 plots FROM the saved delay results:
-create_comprehensive_plots_from_delay_results(
-  results_dir = "complete_delay_results",
-  plots_dir   = "delay_comparison_plots",
-  R0_values   = c(1.5, 2.0, 3.0, 5.0),
-  model_types = c("full","partial"),
-  transitions = c("susceptible_to_exposed","exposed_to_infected")
-)
+# create_comprehensive_plots_from_delay_results(
+#   results_dir = "complete_delay_results",
+#   plots_dir   = "delay_comparison_plots",
+#   R0_values   = c(1.5, 2.0, 3.0, 5.0),
+#   model_types = c("full","partial"),
+#   transitions = c("susceptible_to_exposed","exposed_to_infected")
+# )
 

@@ -389,7 +389,7 @@ run_complete_misspec_analysis <- function(R0_values = DEFAULT_R0_VALUES,
         cat("Processing:", combination_name, "\n")
         cat(strrep("=", 70), "\n")
         
-        file_prefix <- paste0("saved_data/", model_type, "_R0_", R0_val, "_n_1e+05_nsim_100")
+        file_prefix <- paste0("saved_data/", model_type, "_R0_", R0_val, "_n_1e+05_nsim_1000")
         
         if (!file.exists(paste0(file_prefix, "_metadata.rds"))) {
           cat("⚠️  Simulation data not found:", file_prefix, "\n")
@@ -561,8 +561,7 @@ create_comprehensive_plots_from_misspec_results <- function(
         R0_val <- R0_values[i]
         combo   <- paste0(model_type, "_R0_", R0_val, "_", transition)
         misspec_file <- file.path(results_dir, paste0("misspec_results_", combo, ".rds"))
-        abm_file     <- file.path("saved_data", paste0(model_type, "_R0_", R0_val, "_n_1e+05_nsim_100_rt_ci.rds"))
-        
+        abm_file <- file.path("saved_data", paste0(model_type, "_R0_", R0_val, "_n_1e+05_nsim_1000_rt_ci.rds"))        
         if (file.exists(misspec_file)) {
           cat("  • Loading misspec results for R0 =", R0_val, "\n")
           misspec_results <- readRDS(misspec_file)

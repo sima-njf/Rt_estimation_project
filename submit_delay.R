@@ -16,7 +16,7 @@ for (mt in model_types)
 delay_job <- Slurm_lapply(
   X          = combos,
   FUN        = process_one_delay_combo,
-  njobs      = 60,          # 8 array tasks
+  njobs      = length(combos),          # 8 array tasks
   mc.cores   = 1,
   job_name   = "delay_analysis",
   plan       = "submit",

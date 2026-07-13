@@ -16,7 +16,7 @@ for (mt in model_types)
 misspec_job <- Slurm_lapply(
   X          = combos,
   FUN        = process_one_misspec_combo,
-  njobs      = 60,          # 8 array tasks
+  njobs      = length(combos),          # 8 array tasks
   mc.cores   = 1,
   job_name   = "misspec_analysis",
   plan       = "submit",
