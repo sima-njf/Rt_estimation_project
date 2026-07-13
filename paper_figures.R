@@ -1,7 +1,8 @@
 # ================================================================================
-# PUBLICATION FIGURES - Rt ESTIMATION 2x2 GRIDS (static, for LaTeX)
-# ggplot2 + faceting. CONFIDENCE BANDS FOR ALL SERIES (ABM + every method x scenario).
-# Colorblind-safe palette; color + linetype so it survives grayscale.
+# PUBLICATION FIGURES - "Estimating the Reproduction Number" (static, for LaTeX)
+# ggplot2 + faceting. Confidence bands for ALL series.
+# Warm/cool method-family palette: Cori = warm, Wallinga-Teunis = cool, ABM = black.
+# Color + linetype so series stay distinct in grayscale.
 # Outputs vector PDF and 300-dpi PNG per (model, transition).
 # ================================================================================
 
@@ -36,15 +37,15 @@ SERIES_LEVELS <- c(
   "Wallinga-Teunis: 70% Reporting"
 )
 
-# Okabe-Ito colorblind-safe palette (ABM = black)
+# Warm/cool palette: Cori = warm (reds/oranges), WT = cool (blues/greens), ABM = near-black
 SERIES_COLORS <- c(
-  "ABM (True Rt)"                  = "#000000",
-  "Cori: Real Data"               = "#D55E00",
-  "Wallinga-Teunis: Real Data"    = "#0072B2",
-  "Cori: 50% Delayed"             = "#E69F00",
-  "Wallinga-Teunis: 50% Delayed"  = "#56B4E9",
-  "Cori: 70% Reporting"           = "#CC79A7",
-  "Wallinga-Teunis: 70% Reporting"= "#009E73"
+  "ABM (True Rt)"                  = "#1A1A1A",  # near-black
+  "Cori: Real Data"               = "#C0392B",  # deep red
+  "Cori: 50% Delayed"             = "#E67E22",  # orange
+  "Cori: 70% Reporting"           = "#F1C40F",  # amber
+  "Wallinga-Teunis: Real Data"    = "#1F6FB2",  # deep blue
+  "Wallinga-Teunis: 50% Delayed"  = "#16A085",  # teal green
+  "Wallinga-Teunis: 70% Reporting"= "#8E44AD"   # violet
 )
 
 SERIES_LINETYPES <- c(
@@ -151,6 +152,7 @@ make_figure <- function(model_type, transition) {
   trans_label <- transition
   trans_label <- gsub("susceptible_to_exposed", "S \u2192 E", trans_label)
   trans_label <- gsub("exposed_to_infected",    "E \u2192 I", trans_label)
+  model_label <- tools::toTitleCase(model_type)
   
   cols <- SERIES_COLORS[present]
   ltys <- SERIES_LINETYPES[present]
@@ -162,7 +164,7 @@ make_figure <- function(model_type, transition) {
     ) +
     geom_line(
       aes(y = mean_rt, color = series, linetype = series),
-      linewidth = 0.7
+      linewidth = 0.75
     ) +
     geom_hline(
       data = data.frame(R0 = R0_VALUES),
@@ -177,22 +179,24 @@ make_figure <- function(model_type, transition) {
     scale_x_continuous(limits = c(0, 75), breaks = seq(0, 75, 25),
                        expand = expansion(mult = c(0.01, 0.02))) +
     labs(
-      title    = paste0("R_t Estimation: ", tools::toTitleCase(model_type), " Model"),
-      subtitle = paste0(trans_label, " transition"),
+      title    = "Estimating the Reproduction Number",
+      subtitle = paste0(model_label, " model  |  ", trans_label, " transition"),
       x = "Day",
       y = expression(R[t])
     ) +
     theme_bw(base_size = 11) +
     theme(
-      plot.title       = element_text(face = "bold", size = 13, hjust = 0),
-      plot.subtitle    = element_text(size = 11, color = "grey30", hjust = 0),
+      plot.title       = element_text(face = "bold", size = 14, hjust = 0),
+      plot.subtitle    = element_text(size = 11, color = "grey30", hjust = 0,
+                                      margin = margin(b = 6)),
       strip.background = element_rect(fill = "grey92", color = NA),
       strip.text       = element_text(face = "bold", size = 11),
       panel.grid.minor = element_blank(),
       panel.grid.major = element_line(color = "grey90", linewidth = 0.3),
       legend.position  = "bottom",
-      legend.key.width = unit(1.6, "lines"),
-      legend.text      = element_text(size = 9)
+      legend.key.width = unit(1.8, "lines"),
+      legend.text      = element_text(size = 9),
+      legend.margin    = margin(t = 4)
     ) +
     guides(
       color    = guide_legend(nrow = 3, byrow = TRUE),
@@ -200,7 +204,7 @@ make_figure <- function(model_type, transition) {
       linetype = guide_legend(nrow = 3, byrow = TRUE)
     )
   
-  base <- file.path(OUT_DIR, paste0("rt_", model_type, "_", transition))
+  base <- file.path(OUT_DIR, paste0("reproduction_number_", model_type, "_", transition))
   ggsave(paste0(base, ".pdf"), p, width = 9, height = 8.5, device = cairo_pdf)
   ggsave(paste0(base, ".png"), p, width = 9, height = 8.5, dpi = 300)
   cat("  Saved:", basename(paste0(base, ".pdf")), "and .png\n")
@@ -223,8 +227,9 @@ make_all_figures <- function() {
 if (sys.nframe() == 0) {
   make_all_figures()
 }
-#to run
-# CODE_DIR <- "/uufs/chpc.utah.edu/common/home/u1418987/sima/Rt_estimation_project"
-# setwd("/scratch/general/vast/u1418987")
-# source(file.path(CODE_DIR, "paper_figures.R"))
-# make_all_figures()
+
+# To run interactively:
+#   CODE_DIR <- "/uufs/chpc.utah.edu/common/home/u1418987/sima/Rt_estimation_project"
+#   setwd("/scratch/general/vast/u1418987")
+#   source(file.path(CODE_DIR, "paper_figures.R"))
+#   make_all_figures()
